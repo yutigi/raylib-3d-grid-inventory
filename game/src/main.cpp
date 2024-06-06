@@ -1,4 +1,7 @@
+#include "camera.h"
 #include "raylib.h"
+#include "camera.h"
+
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -14,15 +17,20 @@ int main()
 
     // Define the camera to look into our 3d world
     Camera3D camera = { 0 };
-    camera.position = Vector3{ 10.0f, 10.0f, 10.0f }; // Camera position
+    constexpr Vector3 default_camera_position{ 10.0f, 10.0f, 10.0f };
+    camera.position = default_camera_position; // Camera position
     camera.target = Vector3{ 0.0f, 0.0f, 0.0f };      // Camera looking at point
     camera.up = Vector3{ 0.0f, 1.0f, 0.0f };          // Camera up vector (rotation towards target)
     camera.fovy = 45.0f;                                // Camera field-of-view Y
     camera.projection = CAMERA_PERSPECTIVE;             // Camera projection type
 
-    Vector3 cubePosition = { 0.0f, 0.0f, 0.0f };
+    Vector3 cubePosition = { 0.f, 1.f, 0.f };
+    Vector3 cubeSize = { 2.f, 2.f, 2.f };
+    
+    Ray ray = { 0 };                    // Picking line ray
+    RayCollision collision = { 0 };     // Ray collision hit info
 
-    DisableCursor();                    // Limit cursor to relative movement inside the window
+    //DisableCursor();                    // Limit cursor to relative movement inside the window
 
     SetTargetFPS(60);                   // Set our game to run at 60 frames-per-second
     //--------------------------------------------------------------------------------------
@@ -32,9 +40,25 @@ int main()
     {
         // Update
         //----------------------------------------------------------------------------------
-        UpdateCamera(&camera, CAMERA_FREE);
 
-        if (IsKeyPressed('Z')) camera.target = Vector3{ 0.0f, 0.0f, 0.0f };
+        UpdateCameraControl(camera, default_camera_position);
+
+        // ray hit
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+        {
+            if (!collision.hit)
+            {
+                ray = GetScreenToWorldRay(GetMousePosition(), camera);
+
+                // Check collision between ray and box
+                collision = GetRayCollisionBox(ray,
+                            BoundingBox{Vector3{ cubePosition.x - cubeSize.x/2, cubePosition.y - cubeSize.y/2, cubePosition.z - cubeSize.z/2 },
+                                          Vector3{ cubePosition.x + cubeSize.x/2, cubePosition.y + cubeSize.y/2, cubePosition.z + cubeSize.z/2 }});
+            }
+            else collision.hit = false;
+        }
+
+
         //----------------------------------------------------------------------------------
 
         // Draw
@@ -45,9 +69,17 @@ int main()
 
             BeginMode3D(camera);
 
-                DrawCube(cubePosition, 2.0f, 2.0f, 2.0f, RED);
+                DrawCube(cubePosition, cubeSize.x, cubeSize.y, cubeSize.z, RED);
                 DrawCubeWires(cubePosition, 2.0f, 2.0f, 2.0f, MAROON);
 
+                if (collision.hit)
+                {
+                    DrawCube(cubePosition, cubeSize.x, cubeSize.y, cubeSize.z, RED);
+                    DrawCubeWires(cubePosition, cubeSize.x, cubeSize.y, cubeSize.z, MAROON);
+
+                    DrawCubeWires(cubePosition, cubeSize.x + 0.2f, cubeSize.y + 0.2f, cubeSize.z + 0.2f, GREEN);
+                }
+        
                 DrawGrid(10, 1.0f);
 
             EndMode3D();
@@ -55,10 +87,8 @@ int main()
             DrawRectangle( 10, 10, 320, 93, Fade(SKYBLUE, 0.5f));
             DrawRectangleLines( 10, 10, 320, 93, BLUE);
 
-            DrawText("Free camera default controls:", 20, 20, 10, BLACK);
-            DrawText("- Mouse Wheel to Zoom in-out", 40, 40, 10, DARKGRAY);
-            DrawText("- Mouse Wheel Pressed to Pan", 40, 60, 10, DARKGRAY);
-            DrawText("- Z to zoom to (0, 0, 0)", 40, 80, 10, DARKGRAY);
+            DrawText("Right click to rotate the camera", 20, 20, 10, BLACK);
+
 
         EndDrawing();
         //----------------------------------------------------------------------------------
