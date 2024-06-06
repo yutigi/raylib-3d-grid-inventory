@@ -1,9 +1,6 @@
-#include <cmath>
-
-#include "camera.h"
 #include "raylib.h"
 #include "camera.h"
-
+#include <cmath>
 
 //------------------------------------------------------------------------------------
 // Program main entry point
