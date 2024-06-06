@@ -1,10 +1,59 @@
 #include "raylib.h"
 #include "camera.h"
 #include <cmath>
+#include <vector>
 
 //------------------------------------------------------------------------------------
 // Program main entry point
 //------------------------------------------------------------------------------------
+
+#define BOX_SIZE 2.f
+
+typedef struct FBox
+{
+    Vector3 Position;
+    float Scale;
+
+    FBox(float x,float y,float z)
+    {
+        Position = Vector3{x,y,z};
+        Scale = BOX_SIZE;
+    }
+    ~FBox()
+    {
+        
+    }
+    Vector3 GetPosition() const
+    {
+        return Position;
+    }
+    Vector3 GetScale() const
+    {
+        return Vector3{Scale,Scale,Scale};
+    }
+    float GetScalef() const
+    {
+        return Scale;
+    }
+    void SetPosition(const Vector3 NewPosition)
+    {
+        Position = NewPosition;
+    }
+    BoundingBox GetBoundingBox() const
+    {
+        return BoundingBox{
+            Vector3{
+                Position.x - Scale / 2, Position.y - Scale / 2,
+                Position.z - Scale / 2
+            },
+            Vector3{
+                Position.x + Scale / 2, Position.y + Scale / 2,
+                Position.z + Scale / 2
+            }
+        };
+    }
+} FBox;
+
 int main()
 {
     // Initialization
@@ -12,7 +61,7 @@ int main()
     const int screenWidth = 1280;
     const int screenHeight = 720;
 
-    InitWindow(screenWidth, screenHeight, "raylib [core] example - 3d camera free");
+    InitWindow(screenWidth, screenHeight, "raylib 3d-grid-inventory");
 
     // Define the camera to look into our 3d world
     Camera3D camera = { 0 };
@@ -22,9 +71,11 @@ int main()
     camera.up = Vector3{ 0.0f, 1.0f, 0.0f };          // Camera up vector (rotation towards target)
     camera.fovy = 45.0f;                                // Camera field-of-view Y
     camera.projection = CAMERA_PERSPECTIVE;             // Camera projection type
-
-    Vector3 cubePosition = { 0.f, 1.f, 0.f };
-    Vector3 cubeSize = { 2.f, 2.f, 2.f };
+    std::vector<FBox> Boxes{
+        FBox(0.f, 1.f, 0.f),
+    };
+    // Vector3 cubePosition = { 0.f, 1.f, 0.f };
+    // Vector3 cubeSize = { 2.f, 2.f, 2.f };
     
     Ray ray = { 0 };                    // Picking line ray
     RayCollision collision = { 0 };     // Ray collision hit info
@@ -41,43 +92,7 @@ int main()
         //----------------------------------------------------------------------------------
 
         UpdateCameraControl(camera, default_camera_position);
-
-        // ray hit
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-        {
-            if (!collision.hit)
-            {
-                ray = GetScreenToWorldRay(GetMousePosition(), camera);
-
-                // Check collision between ray and box
-                collision = GetRayCollisionBox(ray,
-                                               BoundingBox{
-                                                   Vector3{
-                                                       cubePosition.x - cubeSize.x / 2, cubePosition.y - cubeSize.y / 2,
-                                                       cubePosition.z - cubeSize.z / 2
-                                                   },
-                                                   Vector3{
-                                                       cubePosition.x + cubeSize.x / 2, cubePosition.y + cubeSize.y / 2,
-                                                       cubePosition.z + cubeSize.z / 2
-                                                   }
-                                               });
-            }
-            else collision.hit = false;
-        }
-
-        // drop box
-        Ray MouseRay = GetScreenToWorldRay(GetMousePosition(), camera);
-        RayCollision GridCollision = GetRayCollisionBox(MouseRay,
-                           BoundingBox{
-                               Vector3{
-                                   -500, 0, -500
-                               },
-                               Vector3{
-                                   1000, 1, 1000
-                               }
-                           });
         
-
         //----------------------------------------------------------------------------------
 
         // Draw
@@ -88,27 +103,66 @@ int main()
 
             BeginMode3D(camera);
 
-                DrawCube(cubePosition, cubeSize.x, cubeSize.y, cubeSize.z, RED);
-                DrawCubeWires(cubePosition, 2.0f, 2.0f, 2.0f, MAROON);
-
-                if (collision.hit)
+                const size_t MaxBoxes = Boxes.size();
+                for (int i = 0; i < MaxBoxes; ++i)
                 {
-                    DrawCube(cubePosition, cubeSize.x, cubeSize.y, cubeSize.z, RED);
-                    DrawCubeWires(cubePosition, cubeSize.x, cubeSize.y, cubeSize.z, MAROON);
+                    DrawCube(Boxes[i].GetPosition(), Boxes[i].GetScalef(), Boxes[i].GetScalef(), Boxes[i].GetScalef(), RED);
+                    DrawCubeWires(Boxes[i].GetPosition(), Boxes[i].GetScalef(), Boxes[i].GetScalef(), Boxes[i].GetScalef(), MAROON);
+                }
 
-                    DrawCubeWires(cubePosition, cubeSize.x + 0.2f, cubeSize.y + 0.2f, cubeSize.z + 0.2f, GREEN);
+                // ray hit
+                if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+                {
+                    if (!collision.hit)
+                    {
+                        ray = GetScreenToWorldRay(GetMousePosition(), camera);
+                        // Check collision between ray and box
+                        const size_t MAX = Boxes.size();
+                        for (int i = 0; i < MAX; ++i)
+                        {
+                            collision = GetRayCollisionBox(ray,Boxes[i].GetBoundingBox());
+                            if (collision.hit)
+                            {
+                                DrawCube(Boxes[i].GetPosition(), Boxes[i].GetScalef(), Boxes[i].GetScalef(), Boxes[i].GetScalef(), RED);
+                                DrawCubeWires(Boxes[i].GetPosition(), Boxes[i].GetScalef(), Boxes[i].GetScalef(), Boxes[i].GetScalef(), MAROON);
+
+                                DrawCubeWires(Boxes[i].GetPosition(), Boxes[i].GetScalef() + 0.2f, Boxes[i].GetScalef() + 0.2f, Boxes[i].GetScalef() + 0.2f, GREEN);
+                            }
+                        }
+                    }
+                    else collision.hit = false;
                 }
         
+                
+                // drop box
+                Ray MouseRay = GetScreenToWorldRay(GetMousePosition(), camera);
+                constexpr int GridSize = 1000;
+                RayCollision GridCollision = GetRayCollisionBox(MouseRay,
+                                                                BoundingBox{
+                                                                    Vector3{
+                                                                        -(GridSize/2), 0, -(GridSize/2)
+                                                                    },
+                                                                    Vector3{
+                                                                        GridSize, 1, GridSize
+                                                                    }
+                                                                });
                 // Grid mouse trace visualize
-                if(GridCollision.hit)
+                if(GridCollision.hit && !IsCursorHidden())
                 {
                     const Vector3 snap_grid_pos = Vector3{
                         ceil(GridCollision.point.x),
                         ceil(GridCollision.point.y),
                         ceil(GridCollision.point.z)
                     };
-                    DrawCube(snap_grid_pos, cubeSize.x, cubeSize.y, cubeSize.z, WHITE);
-                    DrawCubeWires(snap_grid_pos, cubeSize.x, cubeSize.y, cubeSize.z, BLACK);
+                    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+                    {
+                        FBox NewBox(snap_grid_pos.x,snap_grid_pos.y,snap_grid_pos.z);
+                        Boxes.emplace_back(NewBox);
+                    }
+
+                    DrawCube(snap_grid_pos, BOX_SIZE, BOX_SIZE, BOX_SIZE, WHITE);
+                    DrawCubeWires(snap_grid_pos, BOX_SIZE, BOX_SIZE, BOX_SIZE, BLACK);
+                    
                 }
         
                 DrawGrid(10, 1.0f);
