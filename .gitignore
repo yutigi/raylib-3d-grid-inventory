@@ -6,3 +6,8 @@ _bin
 /build
 Makefile
 obj
+
+.idea/.idea.raylib-3d-grid-inventory/.idea
+game/raylib-3d-grid-inventory.vcxproj
+game/raylib-3d-grid-inventory.vcxproj.filters
+game/raylib-3d-grid-inventory.vcxproj.user
