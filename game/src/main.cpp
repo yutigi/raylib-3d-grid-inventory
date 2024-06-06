@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include "camera.h"
 #include "raylib.h"
 #include "camera.h"
@@ -52,12 +54,32 @@ int main()
 
                 // Check collision between ray and box
                 collision = GetRayCollisionBox(ray,
-                            BoundingBox{Vector3{ cubePosition.x - cubeSize.x/2, cubePosition.y - cubeSize.y/2, cubePosition.z - cubeSize.z/2 },
-                                          Vector3{ cubePosition.x + cubeSize.x/2, cubePosition.y + cubeSize.y/2, cubePosition.z + cubeSize.z/2 }});
+                                               BoundingBox{
+                                                   Vector3{
+                                                       cubePosition.x - cubeSize.x / 2, cubePosition.y - cubeSize.y / 2,
+                                                       cubePosition.z - cubeSize.z / 2
+                                                   },
+                                                   Vector3{
+                                                       cubePosition.x + cubeSize.x / 2, cubePosition.y + cubeSize.y / 2,
+                                                       cubePosition.z + cubeSize.z / 2
+                                                   }
+                                               });
             }
             else collision.hit = false;
         }
 
+        // drop box
+        Ray MouseRay = GetScreenToWorldRay(GetMousePosition(), camera);
+        RayCollision GridCollision = GetRayCollisionBox(MouseRay,
+                           BoundingBox{
+                               Vector3{
+                                   -500, 0, -500
+                               },
+                               Vector3{
+                                   1000, 1, 1000
+                               }
+                           });
+        
 
         //----------------------------------------------------------------------------------
 
@@ -78,6 +100,18 @@ int main()
                     DrawCubeWires(cubePosition, cubeSize.x, cubeSize.y, cubeSize.z, MAROON);
 
                     DrawCubeWires(cubePosition, cubeSize.x + 0.2f, cubeSize.y + 0.2f, cubeSize.z + 0.2f, GREEN);
+                }
+        
+                // Grid mouse trace visualize
+                if(GridCollision.hit)
+                {
+                    const Vector3 snap_grid_pos = Vector3{
+                        ceil(GridCollision.point.x),
+                        ceil(GridCollision.point.y),
+                        ceil(GridCollision.point.z)
+                    };
+                    DrawCube(snap_grid_pos, cubeSize.x, cubeSize.y, cubeSize.z, WHITE);
+                    DrawCubeWires(snap_grid_pos, cubeSize.x, cubeSize.y, cubeSize.z, BLACK);
                 }
         
                 DrawGrid(10, 1.0f);
