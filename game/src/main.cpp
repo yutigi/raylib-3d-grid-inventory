@@ -7,6 +7,9 @@
 #include <cmath>
 #include <vector>
 
+#include "MathLibrary.h"
+#include "raymath.h"
+
 //------------------------------------------------------------------------------------
 // Program main entry point
 //------------------------------------------------------------------------------------
@@ -66,58 +69,72 @@ int main()
                     DrawCube(Boxes[i].GetPosition(), Boxes[i].GetScalef(), Boxes[i].GetScalef(), Boxes[i].GetScalef(), RED);
                     DrawCubeWires(Boxes[i].GetPosition(), Boxes[i].GetScalef(), Boxes[i].GetScalef(), Boxes[i].GetScalef(), MAROON);
                 }
-
-                // ray hit
-                if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-                {
-                    if (!collision.hit)
-                    {
-                        ray = GetScreenToWorldRay(GetMousePosition(), camera);
-                        // Check collision between ray and box
-                        const size_t MAX = Boxes.size();
-                        for (int i = 0; i < MAX; ++i)
-                        {
-                            collision = GetRayCollisionBox(ray,Boxes[i].GetBoundingBox());
-                            if (collision.hit)
-                            {
-                                DrawCube(Boxes[i].GetPosition(), Boxes[i].GetScalef(), Boxes[i].GetScalef(), Boxes[i].GetScalef(), RED);
-                                DrawCubeWires(Boxes[i].GetPosition(), Boxes[i].GetScalef(), Boxes[i].GetScalef(), Boxes[i].GetScalef(), MAROON);
-
-                                DrawCubeWires(Boxes[i].GetPosition(), Boxes[i].GetScalef() + 0.2f, Boxes[i].GetScalef() + 0.2f, Boxes[i].GetScalef() + 0.2f, GREEN);
-                            }
-                        }
-                    }
-                    else collision.hit = false;
-                }
         
-                
                 // drop box
                 Ray MouseRay = GetScreenToWorldRay(GetMousePosition(), camera);
                 constexpr int GridSize = 1000;
-                RayCollision GridCollision = GetRayCollisionBox(MouseRay,
-                                                                BoundingBox{
-                                                                    Vector3{
-                                                                        -(GridSize/2), 0, -(GridSize/2)
-                                                                    },
-                                                                    Vector3{
-                                                                        GridSize, 1, GridSize
-                                                                    }
-                                                                });
+                RayCollision GridCollision;
+                // check grid
+                GridCollision = GetRayCollisionBox(MouseRay,
+                                                   BoundingBox{
+                                                       Vector3{
+                                                           -(GridSize / 2), -1, -(GridSize / 2)
+                                                       },
+                                                       Vector3{
+                                                           GridSize, 1, GridSize
+                                                       }
+                                                   });
+                // check remaining boxes
+                constexpr float OffsetUp = 100.f;
+                Vector3 MouseRayFromAbovePosition{
+                    GridCollision.point.x, GridCollision.point.y + OffsetUp, GridCollision.point.z
+                };
+                Ray MouseRayFromAbove = Ray{
+                                MouseRayFromAbovePosition,
+                                Vector3{0,-1,0}
+                };
+                Vector3 DebugBoxPos = Vector3{MouseRayFromAbove.position.x, MouseRayFromAbove.position.y, MouseRayFromAbove.position.z};
+                DrawCube(DebugBoxPos,
+                         BOX_SIZE*0.2, BOX_SIZE + OffsetUp,BOX_SIZE*0.2,SKYBLUE);
+                
+                bool bHitAnyBox = false;
+                const size_t MAX = Boxes.size();
+                for (int i = 0; i < MAX; ++i)
+                {
+                    // check boxes collision
+                    GridCollision = GetRayCollisionBox(MouseRayFromAbove,Boxes[i].GetBoundingBox());
+                    if (GridCollision.hit)
+                    {
+                        bHitAnyBox = true;
+                        GridCollision.point.y += BOX_SIZE;
+                        DrawCube(SnapGrid(GridCollision.point,-1.f,BOX_SIZE),BOX_SIZE,BOX_SIZE,BOX_SIZE,GREEN);
+                        break;
+                    }
+                }
+                if(!bHitAnyBox)
+                {
+                    // check grid
+                    GridCollision = GetRayCollisionBox(MouseRay,
+                                                       BoundingBox{
+                                                           Vector3{
+                                                               -(GridSize / 2), -1, -(GridSize / 2)
+                                                           },
+                                                           Vector3{
+                                                               GridSize, 1, GridSize
+                                                           }
+                                                       });
+                }
                 // Grid mouse trace visualize
                 if(GridCollision.hit && !IsCursorHidden())
                 {
-                    const Vector3 snap_grid_pos = Vector3{
-                        ceil(GridCollision.point.x),
-                        ceil(GridCollision.point.y),
-                        ceil(GridCollision.point.z)
-                    };
+                    const Vector3 snap_grid_pos = SnapGrid(GridCollision.point,-1.f,BOX_SIZE);
                     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
                     {
                         FBox NewBox(snap_grid_pos.x,snap_grid_pos.y,snap_grid_pos.z);
                         Boxes.emplace_back(NewBox);
                     }
-
-                    DrawCube(snap_grid_pos, BOX_SIZE, BOX_SIZE, BOX_SIZE, WHITE);
+                    // debug
+                    // DrawCube(snap_grid_pos, BOX_SIZE, BOX_SIZE, BOX_SIZE, WHITE);
                     DrawCubeWires(snap_grid_pos, BOX_SIZE, BOX_SIZE, BOX_SIZE, BLACK);
                     
                 }
